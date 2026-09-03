@@ -86,9 +86,16 @@ if uploaded_file is not None:
           contents.append(img)
           contents.append(f"참고 모범 기준: [{label}]")
 
-        response = client.models.generate_content(
-            model="gemini-3.6-flash", contents=contents
-        )
+      # Gemini 모델 호출 (2.0 과부하 시 1.5로 자동 우회)
+        try:
+          response = client.models.generate_content(
+              model="gemini-3.6-flash", contents=contents
+          )
+        except Exception as api_err:
+          # 2.0 모델이 503 과부하 상태일 경우, 대기시간 없이 1.5-flash로 자동 처리
+          response = client.models.generate_content(
+              model="gemini-1.5-flash", contents=contents
+          )
 
         with col2:
           st.empty()
