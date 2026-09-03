@@ -1,4 +1,5 @@
 import os
+import time
 from google import genai
 from PIL import Image
 import streamlit as st
@@ -92,10 +93,19 @@ if uploaded_file is not None:
           contents.append(f"참고 모범 기준: [{label}]")
 
        # 구글 API 공식 지정 모델 (gemini-3.6-flash)
-        response = client.models.generate_content(
+        try:
+            response = client.models.generate_content(
             model="gemini-3.6-flash",
             contents=contents
-        )
+            )
+                                
+        except Exception:
+    # 503 과부하 등으로 실패 시 2초 대기 후 자동 재시도
+    time.sleep(2)
+    response = client.models.generate_content(
+        model="gemini-3.6-flash",
+        contents=contents
+    )
 
         with col2:
             st.empty()
