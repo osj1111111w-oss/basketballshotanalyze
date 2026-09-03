@@ -6,7 +6,7 @@ import streamlit as st
 
 # 페이지 설정
 st.set_page_config(
-    page_title="🏀 Gemini AI 프로 슛폼 교정 코치", layout="wide"
+    page_title="🏀 농구 슛폼 분석기 ", layout="wide"
 )
 
 # Gemini 클라이언트 초기화 (Streamlit Secrets에서 키 가져오기)
@@ -19,7 +19,7 @@ else:
   )
   st.stop()
 
-st.title("🏀 Gemini AI 맞춤형 농구 슛폼 분석 및 교정 솔루션")
+st.title("🏀 농구 슛폼 분석 및 교정 솔루션")
 st.markdown(
     "자신의 슈팅 사진을 업로드하면, 모범 기준 슛폼 이미지들과 비교하여 **어느 부분을"
     " 어느 방향으로 고쳐야 하는지** 상세히 코칭해 드립니다."
