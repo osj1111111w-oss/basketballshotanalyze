@@ -6,7 +6,7 @@ import streamlit as st
 
 # 페이지 설정
 st.set_page_config(
-    page_title="🏀 농구 슛폼 분석기 ", layout="wide"
+    page_title="🏀 Gemini AI 프로 슛폼 교정 코치", layout="wide"
 )
 
 # Gemini 클라이언트 초기화 (Streamlit Secrets에서 키 가져오기)
@@ -19,19 +19,22 @@ else:
   )
   st.stop()
 
-st.title("🏀 농구 슛폼 분석 및 교정 솔루션")
+st.title("🏀 Gemini AI 맞춤형 농구 슛폼 분석 및 교정 솔루션")
 st.markdown(
     "자신의 슈팅 사진을 업로드하면, 모범 기준 슛폼 이미지들과 비교하여 **어느 부분을"
     " 어느 방향으로 고쳐야 하는지** 상세히 코칭해 드립니다."
 )
 
 # 1. 기준 이미지 로드 함수 (저장소 내 파일 활용)
+# 1. 기준 이미지 로드 함수 (현재 shotting.py 파일의 위치 기준 경로 설정)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 standard_images = {}
 standard_paths = {
-    "준비 자세 (Standard 1)": "standardshot1.jpg",
-    "조준 및 셋포인트 (Standard 2)": "standardshot2.jpg",
-    "슈팅 릴리즈 (Standard 3)": "standardshot3.jpg",
-    "팔로우 스루 (Standard 4)": "standardshot4.jpg",
+    "준비 자세 (Standard 1)": os.path.join(BASE_DIR, "standardshot1.jpg"),
+    "조준 및 셋포인트 (Standard 2)": os.path.join(BASE_DIR, "standardshot2.jpg"),
+    "슈팅 릴리즈 (Standard 3)": os.path.join(BASE_DIR, "standardshot3.jpg"),
+    "팔로우 스루 (Standard 4)": os.path.join(BASE_DIR, "standardshot4.jpg"),
 }
 
 st.sidebar.header("📋 프로 선수/모범 기준 슛폼 참고")
