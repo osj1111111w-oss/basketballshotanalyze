@@ -6,7 +6,7 @@ import streamlit as st
 
 # Streamlit 페이지 설정
 st.set_page_config(
-    page_title="농구 슛폼 분석기", page_icon="농구", layout="centered"
+    page_title="농구 슛폼 분석기", page_icon="🏀", layout="centered"
 )
 
 st.title(" 농구 슛폼 분석기")
@@ -84,11 +84,13 @@ def get_shooting_angles(image):
 
 
 # 1. 정석 사진 파일명 목록 정의 (원하시는 만큼 추가 가능)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 STANDARD_IMAGE_FILES = [
-    "standardshot1.jpg",
-    "standardshot2.jpg",
-    "standardshot3.jpg",
-    "standardshot4.jpg",
+    os.path.join(BASE_DIR, "standardshot1.jpg"),
+    os.path.join(BASE_DIR, "standardshot2.jpg"),
+    os.path.join(BASE_DIR, "standardshot3.jpg"),
+    os.path.join(BASE_DIR, "standardshot4.jpg"),
 ]
 
 # 사용자 슛폼 사진 업로드
@@ -156,7 +158,7 @@ if user_file is not None:
             best_similarity = max(similarities)
 
             st.divider()
-            st.metric(
+            st.metric( 
                 label="🏆 최고 슛폼 일치율", value=f"{best_similarity:.1f}%"
             )
 
