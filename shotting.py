@@ -98,7 +98,7 @@ if uploaded_file is not None:
           )
         except Exception:
           response = client.models.generate_content(
-              model="gemini-1.5-flash", contents=contents
+              model="gemini-2.0-flash", contents=contents
           )
 
         with col2:
