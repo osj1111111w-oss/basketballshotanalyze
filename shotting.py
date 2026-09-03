@@ -91,18 +91,15 @@ if uploaded_file is not None:
           contents.append(img)
           contents.append(f"참고 모범 기준: [{label}]")
 
-        # 최신 권장 모델 (gemini-3.6-flash) 호출
-        # 정식 지원되는 최신 표준 모델 (gemini-2.5-flash) 단일 호출
+       # 구글 API 공식 지정 모델 (gemini-3.6-flash)
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.6-flash",
             contents=contents
         )
 
         with col2:
             st.empty()
             st.markdown(response.text)
-
-      
 
       except Exception as e:
         st.error(f"분석 중 오류가 발생했습니다: {e}")
