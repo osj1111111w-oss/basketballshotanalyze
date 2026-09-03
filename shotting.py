@@ -1,179 +1,112 @@
 import os
-import cv2
-import mediapipe as mp
-import numpy as np
+from google import genai
+from google.genai import types
+from PIL import Image
 import streamlit as st
 
-# Streamlit 페이지 설정
+# 페이지 설정
 st.set_page_config(
-    page_title="농구 슛폼 분석기", page_icon="🏀", layout="centered"
+    page_title="🏀 Gemini AI 프로 슛폼 교정 코치", layout="wide"
 )
 
-st.title(" 농구 슛폼 분석기")
-st.write(
-    "내 슛폼 사진을 업로드하면 서버에 등록된 정석 슛폼들과 비교하여 일치율을"
-    " 측정합니다."
-)
-st.info("💡 기준 일치율 **80% 이상** 시 **통과** 처리됩니다!")
-
-# MediaPipe Pose 설정
-mp_pose = mp.solutions.pose
-pose = mp_pose.Pose(static_image_mode=True, min_detection_confidence=0.5)
-
-
-def calculate_angle(a, b, c):
-  """세 점(a, b, c) 사이의 각도를 계산하는 함수 (b가 꼭짓점)"""
-  a = np.array(a)  # 첫 번째 관절 (예: 어깨 또는 골반)
-  b = np.array(b)  # 중심 관절 (예: 팔꿈치 또는 무릎)
-  c = np.array(c)  # 마지막 관절 (예: 손목 또는 발목)
-
-  radians = np.arctan2(c[1] - b[1], c[0] - b[0]) - np.arctan2(
-      a[1] - b[1], a[0] - b[0]
+# Gemini 클라이언트 초기화 (Streamlit Secrets에서 키 가져오기)
+if "GEMINI_API_KEY" in st.secrets:
+  client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+else:
+  st.error(
+      "Streamlit Secrets에 GEMINI_API_KEY가 설정되어 있지 않습니다. 설정을"
+      " 확인해주세요!"
   )
-  angle = np.abs(radians * 180.0 / np.pi)
+  st.stop()
 
-  if angle > 180.0:
-    angle = 360 - angle
-  return angle
-
-
-def get_shooting_angles(image):
-  """이미지에서 오른쪽 팔꿈치 각도와 오른쪽 무릎 각도 추출"""
-  image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-  results = pose.process(image_rgb)
-
-  if not results.pose_landmarks:
-    return None
-
-  landmarks = results.pose_landmarks.landmark
-
-  try:
-    # 오른쪽 팔 (어깨: 12, 팔꿈치: 14, 손목: 16)
-    shoulder = [
-        landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].x,
-        landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].y,
-    ]
-    elbow = [
-        landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW.value].x,
-        landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW.value].y,
-    ]
-    wrist = [
-        landmarks[mp_pose.PoseLandmark.RIGHT_WRIST.value].x,
-        landmarks[mp_pose.PoseLandmark.RIGHT_WRIST.value].y,
-    ]
-    elbow_angle = calculate_angle(shoulder, elbow, wrist)
-
-    # 오른쪽 다리 (골반/엉덩이: 24, 무릎: 26, 발목: 28)
-    hip = [
-        landmarks[mp_pose.PoseLandmark.RIGHT_HIP.value].x,
-        landmarks[mp_pose.PoseLandmark.RIGHT_HIP.value].y,
-    ]
-    knee = [
-        landmarks[mp_pose.PoseLandmark.RIGHT_KNEE.value].x,
-        landmarks[mp_pose.PoseLandmark.RIGHT_KNEE.value].y,
-    ]
-    ankle = [
-        landmarks[mp_pose.PoseLandmark.RIGHT_ANKLE.value].x,
-        landmarks[mp_pose.PoseLandmark.RIGHT_ANKLE.value].y,
-    ]
-    knee_angle = calculate_angle(hip, knee, ankle)
-
-    return {"elbow_angle": elbow_angle, "knee_angle": knee_angle}
-  except Exception:
-    return None
-
-
-# 1. 정석 사진 파일명 목록 정의 (원하시는 만큼 추가 가능)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-STANDARD_IMAGE_FILES = [
-    os.path.join(BASE_DIR, "standardshot1.jpg"),
-    os.path.join(BASE_DIR, "standardshot2.jpg"),
-    os.path.join(BASE_DIR, "standardshot3.jpg"),
-    os.path.join(BASE_DIR, "standardshot4.jpg"),
-]
-
-# 사용자 슛폼 사진 업로드
-user_file = st.file_uploader(
-    "📸 나의 슛폼 사진을 업로드하세요", type=["jpg", "jpeg", "png"]
+st.title("🏀 Gemini AI 맞춤형 농구 슛폼 분석 및 교정 솔루션")
+st.markdown(
+    "자신의 슈팅 사진을 업로드하면, 모범 기준 슛폼 이미지들과 비교하여 **어느 부분을"
+    " 어느 방향으로 고쳐야 하는지** 상세히 코칭해 드립니다."
 )
 
-if user_file is not None:
-  # 서버에 존재하는 정석 사진들만 불러오기
-  valid_standard_images = []
-  for std_file in STANDARD_IMAGE_FILES:
-    if os.path.exists(std_file):
-      valid_standard_images.append(std_file)
+# 1. 기준 이미지 로드 함수 (저장소 내 파일 활용)
+standard_images = {}
+standard_paths = {
+    "준비 자세 (Standard 1)": "standardshot1.jpg",
+    "조준 및 셋포인트 (Standard 2)": "standardshot2.jpg",
+    "슈팅 릴리즈 (Standard 3)": "standardshot3.jpg",
+    "팔로우 스루 (Standard 4)": "standardshot4.jpg",
+}
 
-  if not valid_standard_images:
-    st.error(
-        "⚠️ 서버에 정석 슛폼 사진이 없습니다! 프로그램이 실행 중인 폴더에"
-        " `standard_1.jpg`, `standard_2.jpg` 등의 이름으로 정석 사진을"
-        " 넣어주세요."
-    )
+st.sidebar.header("📋 프로 선수/모범 기준 슛폼 참고")
+for label, path in standard_paths.items():
+  if os.path.exists(path):
+    try:
+      standard_images[label] = Image.open(path)
+      st.sidebar.image(
+          standard_images[label], caption=label, use_column_width=True
+      )
+    except Exception as e:
+      st.sidebar.warning(f"{label} ({path}) 파일을 읽지 못했습니다: {e}")
   else:
-    # 사용자 이미지 읽기
-    file_bytes_user = np.asarray(bytearray(user_file.read()), dtype=np.uint8)
-    user_img = cv2.imdecode(file_bytes_user, 1)
+      st.sidebar.info(f"'{path}' 파일이 깃허브에 없습니다. (선택사항)")
 
-    st.subheader("업로드된 내 슛폼 사진")
-    st.image(user_img, channels="BGR", width=400)
+# 2. 사용자 입력 섹션
+st.divider()
+uploaded_file = st.file_uploader(
+    "📸 분석할 본인의 농구 슛 사진을 업로드하세요",
+    type=["jpg", "jpeg", "png"],
+)
 
-    if st.button("🚀 슛폼 분석 시작하기", type="primary"):
-      with st.spinner("AI가 여러 정석 슛폼과 비교 분석 중입니다..."):
-        user_angles = get_shooting_angles(user_img)
+if uploaded_file is not None:
+  col1, col2 = st.columns(2)
 
-        if user_angles is None:
-          st.error(
-              "❌ 사람의 관절을 인식하지 못했습니다. 전신 또는 상체가 선명하게"
-              " 나온 사진으로 다시 시도해 주세요."
-          )
-        else:
-          similarities = []
+  with col1:
+    st.subheader("사용자 업로드 슛")
+    user_image = Image.open(uploaded_file)
+    st.image(
+        user_image, caption="분석 대상 사진", use_column_width=True
+    )
 
-          # 여러 장의 정석 사진과 각각 비교
-          for std_path in valid_standard_images:
-            std_img = cv2.imread(std_path)
-            std_angles = get_shooting_angles(std_img)
+  with col2:
+    st.subheader("🎯 AI 코칭 피드백 대기중")
+    st.info(
+        "아래 버튼을 누르면 모범 슛폼 기준과 비교하여 신체 각도 및 수정 방향을"
+        " 진단합니다."
+    )
 
-            if std_angles is not None:
-              # 팔꿈치와 무릎 각도 차이 계산
-              elbow_diff = abs(
-                  std_angles["elbow_angle"] - user_angles["elbow_angle"]
-              )
-              knee_diff = abs(
-                  std_angles["knee_angle"] - user_angles["knee_angle"]
-              )
+  if st.button("🚀 내 슛폼 정밀 분석 및 피드백 받기", type="primary"):
+    with st.spinner(
+        "Gemini AI가 모범 기준 이미지와 대조하여 각도와 자세를 정밀 분석 중입니다..."
+    ):
+      try:
+        # Gemini에 보낼 콘텐츠 리스트 구성
+        contents = [
+            user_image,
+            (
+                "당신은 프로 농구 슈팅 전문 코치입니다. "
+                "위 사용자의 슛 사진을 분석하고, 만약 사이드바나 저장소에 제공된 모범 기준 이미지"
+                "(standardshot1~4.jpg)가 있다면 그 이상적인 자세와 비교해주세요. "
+                "단순한 일치도 점수 매기기에 그치지 말고, 다음 항목을 포함하여 아주 구체적으로 가이드해 주세요:\n\n"
+                "1. **현재 자세 진단**: 팔꿈치 각도, 무릎 굽힘 정도, 밸런스, 릴리즈 타이밍 평가\n"
+                "2. **모범 자세와의 차이점**: 기준 폼과 비교했을 때 부족하거나 틀어진 부분 지적\n"
+                "3. **구체적인 수정 방향 (Actionable Feedback)**: "
+                "'팔꿈치를 안쪽으로 5도 모으세요', '무릎을 좀 더 굽혀서 하체 탄력을 쓰세요' 등 "
+                "어느 방향으로 어떻게 고쳐야 하는지 실천 가능한 교정 팁\n"
+                "4. **종합 총평 및 연습 방법**"
+            ),
+        ]
 
-              # 각도 차이를 바탕으로 일치율 계산 (오차가 클수록 점수 하락)
-              elbow_sim = max(0, 100 - (elbow_diff * 1.5))
-              knee_sim = max(0, 100 - (knee_diff * 1.5))
+        # 사용 가능한 기준 이미지들도 함께 전송 모델에 포함 (멀티모달 활용)
+        for label, img in standard_images.items():
+          contents.append(img)
+          contents.append(f"위 이미지는 참고용 모범 기준인 [{label}] 입니다.")
 
-              # 종합 일치율 (팔 60%, 무릎 40% 가중치)
-              total_sim = (elbow_sim * 0.6) + (knee_sim * 0.4)
-              similarities.append(total_sim)
+        # Gemini 2.5 Flash 모델 호출 (최신 SDK 문법 적용)
+        response = client.models.generate_content(
+            model="gemini-2.5-flash", contents=contents
+        )
 
-          if similarities:
-            # 여러 정석 중 가장 높은 일치율 채택
-            best_similarity = max(similarities)
+        with col2:
+          st.empty()  # 기존 안내 메시지 초기화
+          st.markdown("### 📊 상세 교정 리포트")
+          st.write(response.text)
 
-            st.divider()
-            st.metric( 
-                label="🏆 최고 슛폼 일치율", value=f"{best_similarity:.1f}%"
-            )
-
-            if best_similarity >= 80:
-              st.success(
-                  "🎉 **통과 (Pass)!** 훌륭한 슛폼입니다! 정석 자세와 일치합니다."
-              )
-              st.balloons()
-            else:
-              st.error(
-                  "❌ **실패 (Fail)!** 정석 슛폼과 일치율이 80%를 넘지"
-                  " 못했습니다. 팔꿈치 각도나 자세를 교정해 보세요!"
-              )
-          else:
-            st.warning(
-                "⚠️ 정석 사진들에서 관절을 추출할 수 없습니다. 정석 사진을"
-                " 교체해 주세요."
-            ) 
+      except Exception as e:
+        st.error(f"분석 중 오류가 발생했습니다: {e}")
