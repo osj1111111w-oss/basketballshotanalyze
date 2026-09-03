@@ -1,5 +1,0 @@
-os
-cv2
-mediapipe
-numpy
-streamlit
