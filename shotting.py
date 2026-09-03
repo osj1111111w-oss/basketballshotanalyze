@@ -87,7 +87,7 @@ if uploaded_file is not None:
           contents.append(f"참고 모범 기준: [{label}]")
 
         response = client.models.generate_content(
-            model="gemini-2.5-flash", contents=contents
+            model="gemini-3.6-flash", contents=contents
         )
 
         with col2:
