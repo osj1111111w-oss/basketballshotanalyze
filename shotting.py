@@ -91,15 +91,20 @@ if uploaded_file is not None:
           contents.append(img)
           contents.append(f"참고 모범 기준: [{label}]")
 
-        # 2.0 모델 호출 (과부하 시 1.5로 우회)
+        # 최신 권장 모델 (gemini-3.6-flash) 호출
         try:
           response = client.models.generate_content(
               model="gemini-3.6-flash", contents=contents
           )
         except Exception:
+          # 일시적 503 과부하 발생 시 보조 모델로 우회
           response = client.models.generate_content(
-              model="gemini-2.0-flash", contents=contents
+              model="gemini-1.5-flash", contents=contents
           )
+
+        with col2:
+          st.empty()
+          st.markdown(response.text)
 
         with col2:
           st.empty()
